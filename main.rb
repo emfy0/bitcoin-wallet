@@ -45,7 +45,7 @@ def build_transaction(addr:, shatoshi:, key:)
 
   utxos = addr_utxos(key.addr)
 
-  # error 1 byte
+  # error 1 byte per each input
   fee = utxos.count * 148 + 2 * 34 + 10
   balance_after_tx = addr_balace(key.addr) - shatoshi - fee
   raise "Not enough balance" if balance_after_tx < 0
