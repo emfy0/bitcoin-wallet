@@ -3,25 +3,29 @@ require 'net/http'
 require 'open-uri'
 require 'bitcoin'
 
-def get_balace(addr)
+def addr_balace(addr)
   res = open("#{BLOCKSTREAM_API_URL}address/#{addr}")
-  chain_stats = JSON.parse(res.string)['chain_stats']
-  chain_stats['funded_txo_sum'] - chain_stats['spent_txo_sum']
+  addr_info = JSON.parse(res.string)
+  chain_stats = addr_info['chain_stats']
+  mempool_stats = addr_info['mempool_stats']
+
+  chain_stats['funded_txo_sum'] - chain_stats['spent_txo_sum'] +
+    mempool_stats['funded_txo_sum'] - mempool_stats['spent_txo_sum']
 end
 
-def utxo_ids(addr)
+def utxo_ids_by_addr(addr)
   res = open("#{BLOCKSTREAM_API_URL}address/#{addr}/utxo")
   utxo = JSON.parse(res.string)
   utxo.map { |t| t['txid'] }
 end
 
-def get_tx_by_id(txid)
+def tx_by_id(txid)
   res = open("#{BLOCKSTREAM_API_URL}tx/#{txid}/raw")
   Bitcoin::Protocol::Tx.new(res)
 end
 
 def addr_utxos(addr)
-  utxo_ids(addr).map { |txid| get_tx_by_id txid }
+  utxo_ids_by_addr(addr).map { |txid| tx_by_id txid }
 end
 
 def make_tx_input(tx:, prev_tx:, prev_tx_index:, key:)
@@ -39,14 +43,14 @@ end
 def build_transaction(addr:, shatoshi:, key:)
   include Bitcoin::Builder
 
-  balance_after_tx = get_balace(key.addr) - shatoshi - FEE
-  raise "Not enough balance" if balance_after_tx < 0
-
   utxos = addr_utxos(key.addr)
 
-  binding.irb
+  # error 1 byte
+  fee = utxos.count * 148 + 2 * 34 + 10
+  balance_after_tx = addr_balace(key.addr) - shatoshi - fee
+  raise "Not enough balance" if balance_after_tx < 0
 
-  tx = build_tx do |transaction|
+  build_tx do |transaction|
     utxos.each do |utxo|
       make_tx_input tx: transaction, prev_tx: utxo,
                     prev_tx_index: addr_index_in_tx_out(tx: utxo, addr: key.addr), key: key
@@ -62,11 +66,10 @@ def build_transaction(addr:, shatoshi:, key:)
       o.script {|s| s.recipient key.addr }
     end
   end
+end
 
-  # utxos.each do |utxo|
-  #   p tx.verify_input_signature(addr_index_in_tx_out(tx: utxo, addr: key.addr), utxo)
-  # end
-  tx
+def broadcast_transaction(tx:, url:)
+  Net::HTTP.post url, tx.to_payload.bth
 end
 
 def convert_str_btc_to_satoshi(str)
@@ -94,7 +97,8 @@ until input == 'q' do
   input = $stdin.gets.chomp
   case input
   when '1'
-    $stdout.puts "Balance = #{get_balace(key.addr)} shatoshi(=10^(-8)₿)"
+    balance = addr_balace(key.addr)
+    $stdout.puts "Balance = #{balance} shatoshi, #{balance.to_f / 100_000_000} ₿"
   when '2'
     $stdout.puts "Wallet addr = #{key.addr}"
   when '3'
@@ -111,7 +115,9 @@ until input == 'q' do
       sum = convert_str_btc_to_satoshi(sum)
 
       tx = build_transaction(addr: addr, shatoshi: sum, key: key)
-      binding.irb
+
+      url = URI("#{BLOCKSTREAM_API_URL}tx")
+      broadcast_transaction(tx: tx, url: url)
     rescue RuntimeError => e
       $stdout.puts e.message
     end
@@ -120,9 +126,9 @@ until input == 'q' do
   when 'q'
     break
   else
-    puts 'Invalid option'
+    $stdout.puts 'Invalid option'
   end
   $stdout.puts 'Waiting for another user input...'
 end
 
-puts 'Gracefully stopped'
+$stdout.puts 'Gracefully stopped'
