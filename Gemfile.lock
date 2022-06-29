@@ -18,7 +18,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  bitcoin-ruby
+  bitcoin-ruby (= 0.0.20)
 
 RUBY VERSION
    ruby 2.6.6p146
