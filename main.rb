@@ -117,7 +117,12 @@ until input == 'q' do
       tx = build_transaction(addr: addr, shatoshi: sum, key: key)
 
       url = URI("#{BLOCKSTREAM_API_URL}tx")
-      broadcast_transaction(tx: tx, url: url)
+      res = broadcast_transaction(tx: tx, url: url)
+      if res.is_a?(Net::HTTPSuccess)
+        $stdout.puts "Successfully broadcast transaction #{res.body}"
+      else
+        $stdout.puts "Something went wrong #{res.body}"
+      end
     rescue RuntimeError => e
       $stdout.puts e.message
     end
