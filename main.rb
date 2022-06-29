@@ -79,8 +79,6 @@ end
 BLOCKSTREAM_API_URL = "https://blockstream.info/testnet/api/".freeze
 Bitcoin.network = :testnet3
 
-FEE = 1000
-
 if ARGV[0].nil?
   key = Bitcoin::Key.generate
 else
