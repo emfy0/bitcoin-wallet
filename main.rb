@@ -44,6 +44,8 @@ def build_transaction(addr:, shatoshi:, key:)
 
   utxos = addr_utxos(key.addr)
 
+  binding.irb
+
   tx = build_tx do |transaction|
     utxos.each do |utxo|
       make_tx_input tx: transaction, prev_tx: utxo,
