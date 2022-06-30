@@ -71,7 +71,7 @@ class Wallet
     build_tx do |transaction|
       utxos.each do |utxo|
         make_tx_input tx: transaction, prev_tx: utxo,
-                      prev_tx_indexs: addr_indexs_in_tx_out(tx: utxo, address: addr), sing_key: key
+                      prev_tx_indexs: addr_indexs_in_tx_out(tx: utxo, address: addr), sign_key: key
       end
   
       transaction.output do |o|
@@ -88,12 +88,12 @@ class Wallet
 
   private
 
-  def make_tx_input(tx:, prev_tx:, prev_tx_indexs:, sing_key:)
+  def make_tx_input(tx:, prev_tx:, prev_tx_indexs:, sign_key:)
     prev_tx_indexs.each do |prev_tx_index|
       tx.input do |i|
         i.prev_out prev_tx
         i.prev_out_index prev_tx_index
-        i.signature_key sing_key
+        i.signature_key sign_key
       end
     end
   end
