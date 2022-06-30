@@ -12,8 +12,8 @@ class Wallet
     extend self
     BLOCKSTREAM_API_URL = "https://blockstream.info/testnet/api/".freeze
 
-    def addr_balace(addr)
-      res = open("#{BLOCKSTREAM_API_URL}address/#{addr}")
+    def addr_balace(address)
+      res = open("#{BLOCKSTREAM_API_URL}address/#{address}")
       addr_info = JSON.parse(res.string)
       chain_stats = addr_info['chain_stats']
       mempool_stats = addr_info['mempool_stats']
@@ -22,8 +22,8 @@ class Wallet
         mempool_stats['funded_txo_sum'] - mempool_stats['spent_txo_sum']
     end
 
-    def utxo_ids_by_addr(addr)
-      res = open("#{BLOCKSTREAM_API_URL}address/#{addr}/utxo")
+    def utxo_ids_by_addr(address)
+      res = open("#{BLOCKSTREAM_API_URL}address/#{address}/utxo")
       utxo = JSON.parse(res.string)
       utxo.map { |t| t['txid'] }
     end
@@ -33,8 +33,8 @@ class Wallet
       Bitcoin::Protocol::Tx.new(res)
     end
 
-    def addr_utxo_list(addr)
-      utxo_ids_by_addr(addr).map { |txid| tx_by_id txid }
+    def addr_utxo_list(address)
+      utxo_ids_by_addr(address).map { |txid| tx_by_id txid }
     end
 
     def broadcast_transaction(tx)
@@ -71,7 +71,7 @@ class Wallet
     build_tx do |transaction|
       utxos.each do |utxo|
         make_tx_input tx: transaction, prev_tx: utxo,
-                      prev_tx_indexs: addr_indexs_in_tx_out(tx: utxo, addr: addr), sing_key: key
+                      prev_tx_indexs: addr_indexs_in_tx_out(tx: utxo, address: addr), sing_key: key
       end
   
       transaction.output do |o|
@@ -98,8 +98,8 @@ class Wallet
     end
   end
 
-  def addr_indexs_in_tx_out(tx:, addr:)
+  def addr_indexs_in_tx_out(tx:, address:)
     out = tx.to_hash(with_address: true)['out']
-    out.each_index.select { |i| out[i]['address'] == addr }
+    out.each_index.select { |i| out[i]['address'] == address }
   end
 end
