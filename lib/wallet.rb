@@ -65,11 +65,13 @@ class Wallet
     fee = utxos.count * 148 + 2 * 34 + 10
     balance_after_tx = BlockstreamApi.addr_balace(addr) - shatoshi - fee
     raise "Not enough balance" if balance_after_tx < 0
-  
+
+    utxos.uniq! { |tx| tx.hash }
+
     build_tx do |transaction|
       utxos.each do |utxo|
         make_tx_input tx: transaction, prev_tx: utxo,
-                      prev_tx_index: addr_index_in_tx_out(tx: utxo, addr: addr), key: key
+                      prev_tx_indexs: addr_indexs_in_tx_out(tx: utxo, addr: addr), sing_key: key
       end
   
       transaction.output do |o|
@@ -86,15 +88,18 @@ class Wallet
 
   private
 
-  def make_tx_input(tx:, prev_tx:, prev_tx_index:, sing_key:)
-    tx.input do |i|
-      i.prev_out prev_tx
-      i.prev_out_index prev_tx_index
-      i.signature_key sing_key
+  def make_tx_input(tx:, prev_tx:, prev_tx_indexs:, sing_key:)
+    prev_tx_indexs.each do |prev_tx_index|
+      tx.input do |i|
+        i.prev_out prev_tx
+        i.prev_out_index prev_tx_index
+        i.signature_key sing_key
+      end
     end
   end
 
-  def addr_index_in_tx_out(tx:, addr:)
-    tx.to_hash(with_address: true)['out'].find_index { |o| o['address'] == addr }
+  def addr_indexs_in_tx_out(tx:, addr:)
+    out = tx.to_hash(with_address: true)['out']
+    out.each_index.select { |i| out[i]['address'] == addr }
   end
 end
