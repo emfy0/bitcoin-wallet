@@ -51,7 +51,6 @@ class Wallet
 
   def initialize(key)
     @key = key
-    @transaction = []
   end
 
   def addr
