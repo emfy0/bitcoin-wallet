@@ -10,14 +10,14 @@ class Wallet
 
   module BlockstreamApi
     extend self
-    BLOCKSTREAM_API_URL = "https://blockstream.info/testnet/api/".freeze
+    BLOCKSTREAM_API_URL = 'https://blockstream.info/testnet/api/'.freeze
 
     def addr_balace(address)
       res = open("#{BLOCKSTREAM_API_URL}address/#{address}")
       addr_info = JSON.parse(res.string)
       chain_stats = addr_info['chain_stats']
       mempool_stats = addr_info['mempool_stats']
-    
+
       chain_stats['funded_txo_sum'] - chain_stats['spent_txo_sum'] +
         mempool_stats['funded_txo_sum'] - mempool_stats['spent_txo_sum']
     end
@@ -27,7 +27,7 @@ class Wallet
       utxo = JSON.parse(res.string)
       utxo.map { |t| t['txid'] }
     end
-    
+
     def tx_by_id(txid)
       res = open("#{BLOCKSTREAM_API_URL}tx/#{txid}/raw")
       Bitcoin::Protocol::Tx.new(res)
@@ -63,24 +63,24 @@ class Wallet
     # error 1 byte per each input
     fee = utxos.count * 148 + 2 * 34 + 10
     balance_after_tx = BlockstreamApi.addr_balace(addr) - shatoshi - fee
-    raise "Not enough balance" if balance_after_tx < 0
+    raise 'Not enough balance' if balance_after_tx < 0
 
-    utxos.uniq! { |tx| tx.hash }
+    utxos.uniq!(&:hash)
 
     build_tx do |transaction|
       utxos.each do |utxo|
         make_tx_input tx: transaction, prev_tx: utxo,
                       prev_tx_indexs: addr_indexs_in_tx_out(tx: utxo, address: addr), sign_key: key
       end
-  
+
       transaction.output do |o|
         o.value shatoshi
         o.script { |s| s.recipient send_to_addr }
       end
-  
+
       transaction.output do |o|
         o.value balance_after_tx
-        o.script {|s| s.recipient addr }
+        o.script { |s| s.recipient addr }
       end
     end
   end
