@@ -2,13 +2,18 @@ require_relative 'lib/wallet'
 
 Bitcoin.network = :testnet3
 
+priv_key_file = "#{__dir__}/priv.key"
+
 if ARGV[0].nil?
-  key = Bitcoin::Key.generate
+  if File.size?(priv_key_file)
+    key = Bitcoin::Key.new(File.readlines(priv_key_file)[0])
+  else
+    key = Bitcoin::Key.generate
+    File.open(priv_key_file, 'w+') { |f| f.write(key.priv) }
+  end
 else
   key = Bitcoin::Key.from_base58(ARGV[0])
 end
-
-File.open("#{__dir__}/priv.key",'w+') { |f| f.write(key.priv) }
 
 wallet = Wallet.new(key)
 
