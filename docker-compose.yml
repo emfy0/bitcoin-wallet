@@ -5,6 +5,9 @@ services:
     tty: true
     stdin_open: true
     volumes:
-      - ./:/app
+      - myapp:/app
     build: .
     command: sh
+
+volumes:
+  myapp:
