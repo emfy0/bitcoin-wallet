@@ -42,7 +42,7 @@ until input == 'q' do
     sum = Wallet.convert_str_btc_to_satoshi(sum)
 
     begin
-      tx = wallet.build_transaction(send_to_addr: addr, shatoshi: sum)
+      tx = wallet.build_transaction(send_to_addr: addr, shatoshi_to_send: sum)
 
       res = Wallet::BlockstreamApi.broadcast_transaction(tx)
       if res.is_a?(Net::HTTPSuccess)

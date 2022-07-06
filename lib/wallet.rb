@@ -28,18 +28,18 @@ class Wallet
       utxo.map { |t| t['txid'] }
     end
 
-    def tx_by_id(txid)
+    def transaction_by_id(txid)
       res = open("#{BLOCKSTREAM_API_URL}tx/#{txid}/raw")
       Bitcoin::Protocol::Tx.new(res)
     end
 
     def addr_utxo_list(address)
-      utxo_ids_by_addr(address).map { |txid| tx_by_id txid }
+      utxo_ids_by_addr(address).map { |txid| transaction_by_id txid }
     end
 
-    def broadcast_transaction(tx)
+    def broadcast_transaction(transaction)
       url = URI("#{BLOCKSTREAM_API_URL}tx")
-      Net::HTTP.post url, tx.to_payload.bth
+      Net::HTTP.post url, transaction.to_payload.bth
     end
   end
 
@@ -57,24 +57,25 @@ class Wallet
     @key.addr
   end
 
-  def build_transaction(send_to_addr:, shatoshi:)
+  def build_transaction(send_to_addr:, shatoshi_to_send:)
     utxos = BlockstreamApi.addr_utxo_list(addr)
 
     # error 1 byte per each input
     fee = utxos.count * 148 + 2 * 34 + 10
-    balance_after_tx = BlockstreamApi.addr_balace(addr) - shatoshi - fee
-    raise 'Not enough balance' if balance_after_tx < 0
+    balance_after_tx = BlockstreamApi.addr_balace(addr) - shatoshi_to_send - fee
+    raise 'Not enough balance' if balance_after_tx.negative?
 
     utxos.uniq!(&:hash)
 
     build_tx do |transaction|
       utxos.each do |utxo|
-        make_tx_input tx: transaction, prev_tx: utxo,
-                      prev_tx_indexs: addr_indexs_in_tx_out(tx: utxo, address: addr), sign_key: key
+        make_transaction_input transaction: transaction, prev_transaction: utxo,
+                               prev_transaction_indexs: addr_indexs_in_transaction_out(transaction: utxo, address: addr),
+                               sign_key: key
       end
 
       transaction.output do |o|
-        o.value shatoshi
+        o.value shatoshi_to_send
         o.script { |s| s.recipient send_to_addr }
       end
 
@@ -87,18 +88,18 @@ class Wallet
 
   private
 
-  def make_tx_input(tx:, prev_tx:, prev_tx_indexs:, sign_key:)
-    prev_tx_indexs.each do |prev_tx_index|
-      tx.input do |i|
-        i.prev_out prev_tx
-        i.prev_out_index prev_tx_index
+  def make_transaction_input(transaction:, prev_transaction:, prev_transaction_indexs:, sign_key:)
+    prev_transaction_indexs.each do |prev_transaction_index|
+      transaction.input do |i|
+        i.prev_out prev_transaction
+        i.prev_out_index prev_transaction_index
         i.signature_key sign_key
       end
     end
   end
 
-  def addr_indexs_in_tx_out(tx:, address:)
-    out = tx.to_hash(with_address: true)['out']
-    out.each_index.select { |i| out[i]['address'] == address }
+  def addr_indexs_in_transaction_out(transaction:, address:)
+    transaction_out = transaction.to_hash(with_address: true)['out']
+    transaction_out.each_index.select { |i| transaction_out[i]['address'] == address }
   end
 end
